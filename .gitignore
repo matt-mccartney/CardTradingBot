@@ -1,0 +1,5 @@
+/tradingcardenv
+assets/card_packs/*
+/.vscode
+*.db
+*.pyc
