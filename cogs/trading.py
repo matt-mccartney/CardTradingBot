@@ -8,6 +8,10 @@ import time
 import aiosqlite
 import os
 import random
+from discord.ext import menus
+
+
+
 
 class Trading(commands.Cog):
 
@@ -76,6 +80,7 @@ class Trading(commands.Cog):
         await image.save(f"./assets/card_packs/{pack}/{img_hash}.{image.content_type.split('/')[1]}")
         await interaction.response.send_message(embed=discord.Embed(description="Card Uploaded!", color=discord.Color.green()), ephemeral=True)
 
+
     @app_commands.command()
     @app_commands.guild_only()
     async def open(self, interaction: discord.Interaction, pack:str):
@@ -139,6 +144,7 @@ class Trading(commands.Cog):
 
         await interaction.response.send_message(embed=e, file=img)
 
+
     @app_commands.command()
     async def inventory(self, interaction: discord.Interaction, user: discord.User = None, pack: str = None):
         """View a user's available cards."""
@@ -179,6 +185,7 @@ class Trading(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
+
     @app_commands.command()
     @app_commands.guild_only()
     async def gift(self, interaction: discord.Interaction, user: discord.User, card: str, quantity: int = 1):
@@ -215,6 +222,7 @@ class Trading(commands.Cog):
         img = discord.File(f"./assets/card_packs/{card_tuple[2]}/{card_tuple[3]}", filename="card.png")
         await interaction.response.send_message(embed=embed, file=img)
 
+
     @app_commands.command()
     async def view(self, interaction: discord.Interaction, card: str):
         """View a card from a pack."""
@@ -233,6 +241,7 @@ class Trading(commands.Cog):
         img = discord.File(f"./assets/card_packs/{card_tuple[2]}/{card_tuple[3]}", filename="card.png")
         await interaction.response.send_message(embed=embed, file=img)
 
+
     @app_commands.command()
     @app_commands.guild_only()
     ## @app_commands.checks.has_permissions(administrator=True)
@@ -249,6 +258,7 @@ class Trading(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
 
+
     async def delete_card_helper(self, cid):
         async with aiosqlite.connect("main.db") as db:
             card_query = await db.execute(f"SELECT * FROM cards WHERE id = ?", (cid,))
@@ -258,6 +268,7 @@ class Trading(commands.Cog):
             await db.commit()
         os.remove(f"./assets/card_packs/{card_tuple[2]}/{card_tuple[3]}")
         return card_tuple
+
 
     @app_commands.command()
     @app_commands.guild_only()
@@ -271,6 +282,7 @@ class Trading(commands.Cog):
             color=discord.Color.green()
         )
         return await interaction.response.send_message(embed=embed)
+
 
     @app_commands.command()
     @app_commands.guild_only()
@@ -301,6 +313,7 @@ class Trading(commands.Cog):
         cards = await self.get_cards(key="name")
         return [Choice(name=key, value=value["id"]) for key, value in cards.items() if current in key]
 
+
     @open.autocomplete('pack')
     @upload.autocomplete('pack')
     async def pack_search(self, interaction: discord.Interaction, current: str):
@@ -308,6 +321,7 @@ class Trading(commands.Cog):
             query = await db.execute("SELECT DISTINCT pack FROM cards WHERE inCirculation = 1")
             active_packs = await query.fetchall()
         return [Choice(name=i[0], value=i[0]) for i in active_packs if current in i[0]]
+
 
     @archive.autocomplete('pack')
     @delete_pack.autocomplete('pack')
