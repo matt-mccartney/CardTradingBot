@@ -1,4 +1,5 @@
 /tradingcardenv
+/cardbotenv
 assets/card_packs/*
 /.vscode
 *.db
