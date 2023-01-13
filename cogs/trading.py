@@ -208,7 +208,7 @@ class Trading(commands.Cog):
         for embed in embeds:
             embed.set_author(name=str(user), icon_url=user.avatar.url)
 
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(embeds=embeds)
 
 
     @app_commands.command()
