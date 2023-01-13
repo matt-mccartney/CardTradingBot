@@ -8,7 +8,6 @@ import time
 import aiosqlite
 import os
 import random
-from discord.ext import menus
 
 
 
@@ -91,7 +90,11 @@ class Trading(commands.Cog):
         if pack not in active_packs:
             return await interaction.response.send_message("Pack not found!", ephemeral=True)
         async with aiosqlite.connect("main.db") as db:
-            last_roll = (await (await db.execute('SELECT lastroll FROM rolls WHERE user = ?', (interaction.user.id,))).fetchone())[0]
+            last_roll = (await (await db.execute('SELECT lastroll FROM rolls WHERE user = ?', (interaction.user.id,))).fetchone())
+            if last_roll != None:
+                last_roll = last_roll[0]
+            else:
+                last_roll = -1
             cooldown = time.time() - last_roll
             ## if not cooldown >= 300:
             ##     return await interaction.response.send_message(embed=discord.Embed(description=f'You\'re on cooldown! Come back in **{round(((300 + last_roll) - time.time()) / 60, 1)}** minutes.', color=discord.Color.yellow()), ephemeral=True)
@@ -176,12 +179,34 @@ class Trading(commands.Cog):
             return await interaction.response.send_message("No items.")
 
         nl = '\n'
-        embed = discord.Embed(
-            title=f"Collected Cards",
-            description="\n\n".join([f"__**{key}**__\n{nl.join([f'{i[0]} ({i[2]}) — {i[1]}' for i in value if i[1] > 0])}" for key, value in sorted_inv.items()]),
-            color=discord.Color.blurple()
-        )
-        embed.set_author(name=str(user), icon_url=user.avatar.url)
+        collections = {key:f"__**{key}**__\n{nl.join([f'{i[0]} ({i[2]}) — {i[1]}' for i in value if i[1] > 0])}" for key, value in sorted_inv.items()}
+        if pack != None:
+            collections = {pack: collections[pack]}
+
+        embed_descs = []
+        char_ct = 0
+        current = ""
+        for collection in collections:
+            chars = len("\n\n" + collections[collection])
+            if chars + char_ct >= 4096:
+                embed_descs.append(current)
+                char_ct = 0
+                current = ""
+            else:
+                current += "\n\n" + collections[collection]
+                char_ct += len("\n\n" + collections[collection])
+
+        embeds = [
+            discord.Embed(
+                title="Collected Cards",
+                description=i,
+                color=discord.Color.blurple()
+            )
+            for i in embed_descs
+        ]
+
+        for embed in embeds:
+            embed.set_author(name=str(user), icon_url=user.avatar.url)
 
         await interaction.response.send_message(embed=embed)
 
