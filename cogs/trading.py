@@ -195,6 +195,7 @@ class Trading(commands.Cog):
             else:
                 current += "\n\n" + collections[collection]
                 char_ct += len("\n\n" + collections[collection])
+        embed_descs.append(current)
 
         embeds = [
             discord.Embed(
