@@ -7,6 +7,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 from discord.ext.commands.errors import ArgumentParsingError, BadArgument, DisabledCommand, MissingPermissions
 from cogs.extras import Extras
+from configparser import ConfigParser
 
 
 class SlashCommandBot(commands.Bot):
@@ -68,4 +69,6 @@ bot = SlashCommandBot()
 
 
 if __name__ == "__main__":
-    bot.run('NTgxOTgyOTczODcyNTcwMzc5.G1DHhC.LALZMicebLQUGR0-4d48s-eAO7yQS3dp9EfJJ8')
+    config = ConfigParser()
+    config.read("settings.cfg")
+    bot.run(config["SETUP"]["token"])

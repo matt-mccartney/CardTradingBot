@@ -5,3 +5,4 @@ assets/card_packs/*
 *.db
 *.pyc
 .DS_Store
+settings.cfg
