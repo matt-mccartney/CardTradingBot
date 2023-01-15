@@ -195,6 +195,7 @@ class Trading(commands.Cog):
             else:
                 current += "\n\n" + collections[collection]
                 char_ct += len("\n\n" + collections[collection])
+        embed_descs.append(current)
 
         embeds = [
             discord.Embed(
@@ -208,7 +209,7 @@ class Trading(commands.Cog):
         for embed in embeds:
             embed.set_author(name=str(user), icon_url=user.avatar.url)
 
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(embeds=embeds)
 
 
     @app_commands.command()
