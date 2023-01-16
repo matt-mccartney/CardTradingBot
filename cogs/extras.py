@@ -34,7 +34,7 @@ class Extras(commands.Cog):
         embed.add_field(name="Channels", value=f"{len(list(self.bot.get_all_channels()))} total channels", inline=False)
         embed.add_field(name="Servers", value=f"{len(self.bot.guilds)}")
         embed.add_field(name="Users", value=f"{len(list(self.bot.get_all_members()))}")
-        embed.set_footer(text=f"Made with ❤️ by {creator}", icon_url=self.bot.user.avatar.url)
+        embed.set_footer(text=f"Made with ❤️ by {creator}", icon_url=self.bot.user.display_avatar.url)
 
         await interaction.response.send_message(embed=embed)
 
