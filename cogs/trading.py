@@ -231,7 +231,7 @@ class Trading(commands.Cog):
                 return await interaction.response.send_message("You don't own this item!", ephemeral=True)
             if old_data[0] < quantity:
                 return await interaction.response.send_message("You don't have enough of this item!", ephemeral=True)
-            await db.execute(f"UPDATE inventory SET count = ? WHERE user = ?", (old_data[0] - quantity, interaction.user.id,))
+            await db.execute(f"UPDATE inventory SET count = ? WHERE user = ? AND card = ?", (old_data[0] - quantity, interaction.user.id, card))
             if await query.fetchone() != None:
                 old = await db.execute(f"SELECT count FROM inventory WHERE user = ? AND card = ?", (user.id, card))
                 await db.execute(f"UPDATE inventory SET count = ? WHERE user = ? AND card = ?", ((await old.fetchone())[0] + quantity, user.id, card))
