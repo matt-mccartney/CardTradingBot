@@ -337,7 +337,7 @@ class Trading(commands.Cog):
     @gift.autocomplete('card')
     async def card_search(self, interaction: discord.Interaction, current: str):
         cards = await self.get_cards(key="name")
-        return [Choice(name=key, value=value["id"]) for key, value in cards.items() if current in key]
+        return [Choice(name=key, value=value["id"]) for key, value in cards.items() if current in key][:25]
 
 
     @open.autocomplete('pack')
@@ -346,14 +346,14 @@ class Trading(commands.Cog):
         async with aiosqlite.connect("main.db") as db:
             query = await db.execute("SELECT DISTINCT pack FROM cards WHERE inCirculation = 1")
             active_packs = await query.fetchall()
-        return [Choice(name=i[0], value=i[0]) for i in active_packs if current in i[0]]
+        return [Choice(name=i[0], value=i[0]) for i in active_packs if current in i[0]][:25]
 
 
     @archive.autocomplete('pack')
     @delete_pack.autocomplete('pack')
     @inventory.autocomplete('pack')
     async def archive_search(self, interaction: discord.Interaction, current: str):
-        return [Choice(name=i, value=i) for i in os.listdir("./assets/card_packs") if current in i]
+        return [Choice(name=i, value=i) for i in os.listdir("./assets/card_packs") if current in i][:25]
 
 
 async def setup(bot):
