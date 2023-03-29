@@ -1,7 +1,7 @@
 import datetime
 import os
 import aiosqlite
-
+import logging
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
@@ -25,17 +25,19 @@ class SlashCommandBot(commands.Bot):
         self.timezone = datetime.datetime.now().astimezone()
 
         async with aiosqlite.connect("main.db") as db:
+            # Ensure needed table exists
             await db.execute("CREATE TABLE IF NOT EXISTS cards (id, title, pack, img, rarity, inCirculation)")
             await db.execute("CREATE TABLE IF NOT EXISTS rolls (user, lastroll)")
             await db.execute("CREATE TABLE IF NOT EXISTS inventory (user, card, count)")
             await db.commit()
 
+        # Load bot plugins
         for filename in os.listdir('./cogs'):
             if filename.endswith('.py'):
                 await bot.load_extension(f'cogs.{filename[:-3]}')
 
     async def on_ready(self):
-        await self.tree.sync()
+        await self.tree.sync() # Sync commands to Discord
         await self.change_presence(activity=discord.Game(name="with cards"))
 
     async def on_command_error(self, context: commands.Context, exception: commands.errors.CommandError) -> None:
@@ -55,12 +57,6 @@ class SlashCommandBot(commands.Bot):
         else:
             return
         await context.send(embed=discord.Embed(title="An Error Occured", description=msg, color=discord.Color.red()))
-
-    @tasks.loop(seconds=5)
-    async def commit_db(self):
-        print("Saving database.")
-        await self.db.commit()
-
 
 
 intents = discord.Intents.default()

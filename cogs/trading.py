@@ -28,6 +28,7 @@ class Trading(commands.Cog):
 
 
     async def get_cards(self, key: Literal["name", "id"] = "id"):
+        """Get a dictionary consisting of each card's details. Allow to form keys by id or name"""
         async with aiosqlite.connect("main.db") as db:
             query = await db.execute("SELECT * FROM cards")
             cards = await query.fetchall()
@@ -36,7 +37,10 @@ class Trading(commands.Cog):
             k = 0
         elif key == "name":
             k = 1
+        else:
+            raise ValueError
 
+        # Iterate cards and add to dictionary
         card_dict = {}
         for card in cards:
             card_dict[card[k]] = {
@@ -52,7 +56,7 @@ class Trading(commands.Cog):
 
     @app_commands.command()
     @app_commands.guild_only()
-    ## @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
     @app_commands.describe(
         title='The name of the card',
         image='image of the card to be displayed',
@@ -63,6 +67,7 @@ class Trading(commands.Cog):
         """Upload a new card for users to use."""
         card_id = "c" + sha256((title + pack + rarity + str(time.time())).encode("utf-8")).hexdigest()[:25]
         img_hash = sha256((image.filename + str(int(time.time())) + str(interaction.user.id)).encode("utf-8")).hexdigest()
+        # Handle unsupported files
         if not image.content_type.startswith("image/"):
             return await interaction.response.send_message(
                 embed=discord.Embed(
@@ -71,6 +76,7 @@ class Trading(commands.Cog):
                 ),
                 ephemeral=True
             )
+        # Insert card into DB and then add it to the system files.
         async with aiosqlite.connect("main.db") as db:
             await db.execute("INSERT INTO cards VALUES(?, ?, ?, ?, ?, 1)", (card_id, title, pack, f"{img_hash}.{image.content_type.split('/')[1]}", rarity))
             await db.commit()
@@ -84,23 +90,29 @@ class Trading(commands.Cog):
     @app_commands.guild_only()
     async def open(self, interaction: discord.Interaction, pack:str):
         """Reveal a card from one of the available packs."""
+        # Only select packs that are in rotation
         async with aiosqlite.connect("main.db") as db:
             query = await db.execute("SELECT DISTINCT pack FROM cards WHERE inCirculation = 1")
             active_packs = [pack[0] for pack in await query.fetchall()]
         if pack not in active_packs:
             return await interaction.response.send_message("Pack not found!", ephemeral=True)
+
         async with aiosqlite.connect("main.db") as db:
+            # Ensure 15 minutes has passed since user last rolled.
             last_roll = (await (await db.execute('SELECT lastroll FROM rolls WHERE user = ?', (interaction.user.id,))).fetchone())
             if last_roll != None:
                 last_roll = last_roll[0]
             else:
                 last_roll = -1
             cooldown = time.time() - last_roll
-            ## if not cooldown >= 300:
-            ##     return await interaction.response.send_message(embed=discord.Embed(description=f'You\'re on cooldown! Come back in **{round(((300 + last_roll) - time.time()) / 60, 1)}** minutes.', color=discord.Color.yellow()), ephemeral=True)
+            if not cooldown >= 300:
+                return await interaction.response.send_message(embed=discord.Embed(description=f'You\'re on cooldown! Come back in **{round(((300 + last_roll) - time.time()) / 60, 1)}** minutes.', color=discord.Color.yellow()), ephemeral=True)
 
+            # Update last roll time
             await db.execute('DELETE FROM rolls WHERE user = ?', (interaction.user.id,))
             await db.execute('INSERT INTO rolls VALUES(?, ?)', (interaction.user.id, time.time()))
+
+            # Create a list of cards from selected pack
             sorted_cards = [
                 await (await db.execute('SELECT * FROM cards WHERE pack = ? AND rarity = ?', (pack, rarity))).fetchall()
                 for rarity
@@ -108,6 +120,7 @@ class Trading(commands.Cog):
             ]
 
             await db.commit()
+
 
         while True:
             roll = random.randint(1, 100)
@@ -123,11 +136,14 @@ class Trading(commands.Cog):
             elif 99 <= roll <= 100:
                 rarity_index = 4
 
+            # Ensure that there are cards for the selected rarity
             if bool(sorted_cards[rarity_index]):
                 break
 
+        # Pull a random card from the selected rarity pool
         card = random.choice(sorted_cards[rarity_index])
 
+        # Update user inventory
         async with aiosqlite.connect("main.db") as db:
             query = await db.execute("SELECT * FROM inventory WHERE user = ? AND card = ?", (interaction.user.id, card[0]))
             if await query.fetchone() != None:
@@ -155,16 +171,19 @@ class Trading(commands.Cog):
             user = interaction.user
 
         async with aiosqlite.connect("main.db") as db:
+            # Get a list of packs
             query = await db.execute("SELECT DISTINCT pack FROM cards")
             packs = [pack[0] for pack in await query.fetchall()]
 
             query = await db.execute("SELECT * FROM inventory WHERE user = ?", (user.id,))
             rows = await query.fetchall()
+            # Return if user has no cards
             if rows == []:
                 return await interaction.response.send_message("No items.")
 
         cards = await self.get_cards()
         sorted_inv = {}
+        # Iterate over fards and add them to a dictionary
         for count, row in enumerate(rows, start=0):
             user_id, card_id, amount = row
             card_pack = cards[card_id]["pack"]
@@ -178,11 +197,13 @@ class Trading(commands.Cog):
         if sorted_inv == {}:
             return await interaction.response.send_message("No items.")
 
+        # Return dictionary of collections (Packs)
         nl = '\n'
         collections = {key:f"__**{key}**__\n{nl.join([f'{i[0]} ({i[2]}) — {i[1]}' for i in value if i[1] > 0])}" for key, value in sorted_inv.items()}
         if pack != None:
             collections = {pack: collections[pack]}
 
+        # Create the message to return to the Discord user
         embed_descs = []
         char_ct = 0
         current = ""
@@ -255,6 +276,7 @@ class Trading(commands.Cog):
         async with aiosqlite.connect("main.db") as db:
             card_entry = await db.execute("SELECT * FROM cards WHERE id = ?", (card,))
             card_tuple = await card_entry.fetchone()
+            # Handle invalid inputs
             if card_tuple == None:
                 return await interaction.response.send_message("Not a valid card serial!", ephemeral=True)
 
@@ -270,12 +292,13 @@ class Trading(commands.Cog):
 
     @app_commands.command()
     @app_commands.guild_only()
-    ## @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
     async def archive(self, interaction: discord.Interaction, action: Literal["Archive", "Unarchive"], pack: str):
         """Remove or enable the ability to open a pack"""
         if pack not in os.listdir("./assets/card_packs"):
             return await interaction.response.send_message("Pack not found!", ephemeral=True)
         async with aiosqlite.connect("main.db") as db:
+            # Update database to remove pack from circulation
             await db.execute(f"UPDATE cards SET inCirculation = {0 if action == 'Archive' else 1} WHERE pack = ?", (pack,))
             await db.commit()
         embed = discord.Embed(
@@ -286,6 +309,7 @@ class Trading(commands.Cog):
 
 
     async def delete_card_helper(self, cid):
+        """Deletes a card from the database, removing it from people's inventories."""
         async with aiosqlite.connect("main.db") as db:
             card_query = await db.execute(f"SELECT * FROM cards WHERE id = ?", (cid,))
             card_tuple = await card_query.fetchone()
@@ -298,7 +322,7 @@ class Trading(commands.Cog):
 
     @app_commands.command()
     @app_commands.guild_only()
-    ## @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
     async def delete_card(self, interaction: discord.Interaction, card: str):
         """Permanently delete a card from the pack."""
         card_info = await self.delete_card_helper(card)
@@ -312,7 +336,7 @@ class Trading(commands.Cog):
 
     @app_commands.command()
     @app_commands.guild_only()
-    ## @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
     async def delete_pack(self, interaction: discord.Interaction, pack: str):
         """Permanently delete a pack."""
         if pack not in os.listdir("./assets/card_packs"):
@@ -337,7 +361,7 @@ class Trading(commands.Cog):
     @gift.autocomplete('card')
     async def card_search(self, interaction: discord.Interaction, current: str):
         cards = await self.get_cards(key="name")
-        return [Choice(name=key, value=value["id"]) for key, value in cards.items() if current in key][:25]
+        return [Choice(name=key, value=value["id"]) for key, value in cards.items() if current in key][:25] # Discord only allows for 25 choices
 
 
     @open.autocomplete('pack')
